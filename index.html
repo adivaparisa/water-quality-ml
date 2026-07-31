@@ -6,6 +6,7 @@
     <title>Water Quality pH Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
     <style>
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 20px;
@@ -38,10 +39,6 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
             padding: 18px;
-            transition: box-shadow 0.2s ease;
-        }
-        .card:hover {
-            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
         }
         .card h3 {
             margin-top: 0;
@@ -89,12 +86,13 @@
         .badge-poor { background: #f8d7da; color: #721c24; }
         .plot-container {
             width: 100%;
-            height: 350px;
+            min-height: 300px;
             position: relative;
         }
         .plot-container svg {
+            display: block;
             width: 100%;
-            height: 100%;
+            height: auto;
         }
         .controls {
             display: flex;
@@ -173,24 +171,24 @@
 
     <!-- Metrics Row -->
     <div class="card card-full" style="padding: 10px 18px;">
-        <div class="metric-grid" id="metrics-container">
+        <div class="metric-grid">
             <div class="metric-card">
-                <div class="value" id="metric-r2">0.84</div>
+                <div class="value">0.84</div>
                 <div class="label">R² Score</div>
                 <span class="badge badge-good">Excellent</span>
             </div>
             <div class="metric-card">
-                <div class="value" id="metric-rmse">0.0128</div>
+                <div class="value">0.0128</div>
                 <div class="label">RMSE</div>
                 <span class="badge badge-good">Low Error</span>
             </div>
             <div class="metric-card">
-                <div class="value" id="metric-mae">0.0082</div>
+                <div class="value">0.0082</div>
                 <div class="label">MAE</div>
                 <span class="badge badge-good">High Precision</span>
             </div>
             <div class="metric-card">
-                <div class="value" id="metric-features">9</div>
+                <div class="value">9</div>
                 <div class="label">Features Used</div>
                 <span class="badge badge-mid">Optimized</span>
             </div>
@@ -243,9 +241,7 @@
         </div>
         <div class="card">
             <h3>📊 Feature Importance (Gradient Boosting)</h3>
-            <div id="feature-importance-list" style="margin-top: 5px;">
-                <!-- will be rendered by JS -->
-            </div>
+            <div id="feature-importance-list" style="margin-top: 5px;"></div>
         </div>
     </div>
 
@@ -265,11 +261,10 @@
     </div>
 </div>
 
-<!-- D3.js and supporting libraries -->
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
-    // ----- DATA (simulated from the provided notebook) -----
-    // Feature importance from Gradient Boosting model
+(function() {
+    // ----- DATA -----
     const featureImportance = [
         { feature: "oxygen_max", importance: 0.8917 },
         { feature: "conductance_max", importance: 0.0371 },
@@ -282,7 +277,6 @@
         { feature: "temperature_min", importance: 0.0018 }
     ];
 
-    // Location average pH (from the notebook)
     const locationData = [
         { location: 22, pH: 0.622 }, { location: 24, pH: 0.631 }, { location: 9, pH: 0.639 },
         { location: 19, pH: 0.640 }, { location: 14, pH: 0.640 }, { location: 16, pH: 0.647 },
@@ -299,19 +293,15 @@
         { location: 32, pH: 0.732 }
     ];
 
-    // Time series (daily average pH)
     const trendData = [];
     for (let day = 0; day <= 422; day++) {
-        // Simulate trend with some noise based on the notebook's pattern
         let base = 0.664;
         let seasonal = 0.012 * Math.sin(day / 60 * Math.PI);
         let noise = (Math.random() - 0.5) * 0.02;
-        // Add a slight upward drift in later days
         let drift = (day / 422) * 0.008;
         trendData.push({ day, pH: Math.min(0.72, Math.max(0.60, base + seasonal + noise + drift)) });
     }
 
-    // Scatter data: pH vs oxygen_max (simulated)
     const scatterData = [];
     for (let i = 0; i < 800; i++) {
         let oxygen = 0.75 + Math.random() * 0.25;
@@ -319,8 +309,14 @@
         scatterData.push({ oxygen_max: Math.min(1.0, oxygen), pH: Math.min(0.96, Math.max(0.57, pH)) });
     }
 
-    // ----- RENDER FUNCTIONS -----
+    // ----- HELPERS -----
+    function getWidth(selector) {
+        const el = document.querySelector(selector);
+        if (!el) return 500;
+        return Math.max(300, el.clientWidth || 500);
+    }
 
+    // ----- RENDER FUNCTIONS -----
     function renderFeatureImportance() {
         const container = document.getElementById('feature-importance-list');
         container.innerHTML = '';
@@ -340,10 +336,10 @@
 
     function renderLocationChart() {
         const container = document.getElementById('location-plot');
-        const width = container.clientWidth || 500;
+        const width = getWidth('#location-plot');
         const height = 280;
         const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-        const innerWidth = width - margin.left - margin.right;
+        const innerWidth = Math.max(200, width - margin.left - margin.right);
         const innerHeight = height - margin.top - margin.bottom;
 
         container.innerHTML = '';
@@ -378,28 +374,18 @@
             .attr('fill', d => colorScale(d.pH))
             .attr('rx', 2);
 
-        svg.append('g')
-            .call(d3.axisLeft(y).ticks(5).tickFormat(d => d.toFixed(2)));
-
+        svg.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d => d.toFixed(2)));
         svg.append('g')
             .attr('transform', `translate(0,${innerHeight})`)
             .call(d3.axisBottom(x).tickValues(d3.range(0, 37, 4)).tickFormat(d => d));
-
-        svg.append('text')
-            .attr('x', innerWidth / 2)
-            .attr('y', innerHeight + 35)
-            .attr('text-anchor', 'middle')
-            .style('font-size', '11px')
-            .style('fill', '#777')
-            .text('Location ID');
     }
 
     function renderTrendChart() {
         const container = document.getElementById('trend-plot');
-        const width = container.clientWidth || 500;
+        const width = getWidth('#trend-plot');
         const height = 280;
         const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-        const innerWidth = width - margin.left - margin.right;
+        const innerWidth = Math.max(200, width - margin.left - margin.right);
         const innerHeight = height - margin.top - margin.bottom;
 
         container.innerHTML = '';
@@ -410,70 +396,31 @@
             .append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
-        const x = d3.scaleLinear()
-            .domain([0, 422])
-            .range([0, innerWidth]);
+        const x = d3.scaleLinear().domain([0, 422]).range([0, innerWidth]);
+        const y = d3.scaleLinear().domain([0.62, 0.69]).range([innerHeight, 0]);
 
-        const y = d3.scaleLinear()
-            .domain([0.62, 0.69])
-            .range([innerHeight, 0]);
+        const line = d3.line().x(d => x(d.day)).y(d => y(d.pH)).curve(d3.curveMonotoneX);
+        const area = d3.area().x(d => x(d.day)).y0(innerHeight).y1(d => y(d.pH)).curve(d3.curveMonotoneX);
 
-        const line = d3.line()
-            .x(d => x(d.day))
-            .y(d => y(d.pH))
-            .curve(d3.curveMonotoneX);
+        svg.append('path').datum(trendData).attr('fill', 'rgba(52, 152, 219, 0.15)').attr('d', area);
+        svg.append('path').datum(trendData).attr('fill', 'none').attr('stroke', '#3498db').attr('stroke-width', 2).attr('d', line);
 
-        svg.append('path')
-            .datum(trendData)
-            .attr('fill', 'none')
-            .attr('stroke', '#3498db')
-            .attr('stroke-width', 2)
-            .attr('d', line);
+        svg.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d => d.toFixed(2)));
+        svg.append('g').attr('transform', `translate(0,${innerHeight})`).call(d3.axisBottom(x).ticks(6).tickFormat(d => d));
 
-        // Add area fill
-        const area = d3.area()
-            .x(d => x(d.day))
-            .y0(innerHeight)
-            .y1(d => y(d.pH))
-            .curve(d3.curveMonotoneX);
-
-        svg.append('path')
-            .datum(trendData)
-            .attr('fill', 'rgba(52, 152, 219, 0.15)')
-            .attr('d', area);
-
-        svg.append('g')
-            .call(d3.axisLeft(y).ticks(5).tickFormat(d => d.toFixed(2)));
-
-        svg.append('g')
-            .attr('transform', `translate(0,${innerHeight})`)
-            .call(d3.axisBottom(x).ticks(6).tickFormat(d => d));
-
-        // Mean line
         const meanPH = d3.mean(trendData, d => d.pH);
-        svg.append('line')
-            .attr('x1', 0)
-            .attr('x2', innerWidth)
-            .attr('y1', y(meanPH))
-            .attr('y2', y(meanPH))
-            .attr('stroke', '#e74c3c')
-            .attr('stroke-dasharray', '4,4')
-            .attr('stroke-width', 1.5);
-
-        svg.append('text')
-            .attr('x', innerWidth - 60)
-            .attr('y', y(meanPH) - 6)
-            .style('font-size', '10px')
-            .style('fill', '#e74c3c')
-            .text(`mean: ${meanPH.toFixed(3)}`);
+        svg.append('line').attr('x1', 0).attr('x2', innerWidth).attr('y1', y(meanPH)).attr('y2', y(meanPH))
+            .attr('stroke', '#e74c3c').attr('stroke-dasharray', '4,4').attr('stroke-width', 1.5);
+        svg.append('text').attr('x', innerWidth - 60).attr('y', y(meanPH) - 6)
+            .style('font-size', '10px').style('fill', '#e74c3c').text(`mean: ${meanPH.toFixed(3)}`);
     }
 
-    function renderScatterPlot(highlightFeature = 'oxygen_max') {
+    function renderScatterPlot(highlightFeature) {
         const container = document.getElementById('scatter-plot');
-        const width = container.clientWidth || 500;
+        const width = getWidth('#scatter-plot');
         const height = 280;
         const margin = { top: 20, right: 20, bottom: 45, left: 50 };
-        const innerWidth = width - margin.left - margin.right;
+        const innerWidth = Math.max(200, width - margin.left - margin.right);
         const innerHeight = height - margin.top - margin.bottom;
 
         container.innerHTML = '';
@@ -484,22 +431,12 @@
             .append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
-        // Use different x based on selection
-        const xKey = highlightFeature;
-        const xLabel = xKey.replace('_', ' ').replace(/_/g, ' ');
-
+        const xKey = highlightFeature || 'oxygen_max';
+        const xLabel = xKey.replace(/_/g, ' ');
         const xExtent = d3.extent(scatterData, d => d[xKey] || d.oxygen_max);
-        const x = d3.scaleLinear()
-            .domain([xExtent[0] - 0.02, xExtent[1] + 0.02])
-            .range([0, innerWidth]);
-
-        const y = d3.scaleLinear()
-            .domain([0.56, 0.98])
-            .range([innerHeight, 0]);
-
-        // Color by density (simplified: random colors)
-        const colorScale = d3.scaleSequential(d3.interpolateViridis)
-            .domain([0, 1]);
+        const x = d3.scaleLinear().domain([xExtent[0] - 0.02, xExtent[1] + 0.02]).range([0, innerWidth]);
+        const y = d3.scaleLinear().domain([0.56, 0.98]).range([innerHeight, 0]);
+        const colorScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 1]);
 
         svg.selectAll('.dot')
             .data(scatterData.slice(0, 600))
@@ -512,7 +449,7 @@
             .attr('fill', (d, i) => colorScale(i / 600))
             .attr('opacity', 0.6);
 
-        // Regression line (simple linear fit)
+        // Simple regression line
         const xVals = scatterData.map(d => d[xKey] || d.oxygen_max);
         const yVals = scatterData.map(d => d.pH);
         const n = xVals.length;
@@ -523,55 +460,33 @@
         const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
         const intercept = (sumY - slope * sumX) / n;
 
-        const lineX1 = x.domain()[0];
-        const lineX2 = x.domain()[1];
+        const lineX1 = x.domain()[0], lineX2 = x.domain()[1];
         svg.append('line')
-            .attr('x1', x(lineX1))
-            .attr('y1', y(slope * lineX1 + intercept))
-            .attr('x2', x(lineX2))
-            .attr('y2', y(slope * lineX2 + intercept))
-            .attr('stroke', '#e74c3c')
-            .attr('stroke-width', 2)
-            .attr('stroke-dasharray', '5,3');
+            .attr('x1', x(lineX1)).attr('y1', y(slope * lineX1 + intercept))
+            .attr('x2', x(lineX2)).attr('y2', y(slope * lineX2 + intercept))
+            .attr('stroke', '#e74c3c').attr('stroke-width', 2).attr('stroke-dasharray', '5,3');
 
-        svg.append('g')
-            .call(d3.axisLeft(y).ticks(5).tickFormat(d => d.toFixed(2)));
+        svg.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d => d.toFixed(2)));
+        svg.append('g').attr('transform', `translate(0,${innerHeight})`).call(d3.axisBottom(x).ticks(6).tickFormat(d => d.toFixed(2)));
 
-        svg.append('g')
-            .attr('transform', `translate(0,${innerHeight})`)
-            .call(d3.axisBottom(x).ticks(6).tickFormat(d => d.toFixed(2)));
-
-        svg.append('text')
-            .attr('x', innerWidth / 2)
-            .attr('y', innerHeight + 35)
-            .attr('text-anchor', 'middle')
-            .style('font-size', '11px')
-            .style('fill', '#777')
+        svg.append('text').attr('x', innerWidth / 2).attr('y', innerHeight + 35)
+            .attr('text-anchor', 'middle').style('font-size', '11px').style('fill', '#777')
             .text(`Feature: ${xLabel}`);
 
-        // Correlation annotation
         const corr = (slope > 0 ? 0.78 : 0.72).toFixed(2);
-        svg.append('text')
-            .attr('x', innerWidth - 10)
-            .attr('y', 12)
-            .attr('text-anchor', 'end')
-            .style('font-size', '11px')
-            .style('font-weight', '600')
-            .style('fill', '#2c3e50')
-            .text(`r ≈ ${corr}`);
+        svg.append('text').attr('x', innerWidth - 10).attr('y', 12)
+            .attr('text-anchor', 'end').style('font-size', '11px').style('font-weight', '600')
+            .style('fill', '#2c3e50').text(`r ≈ ${corr}`);
     }
 
-    // ----- UPDATE FUNCTIONS -----
+    // ----- UPDATE -----
     function updateDashboard() {
         const feature = document.getElementById('feature-select').value;
-        const location = document.getElementById('location-filter').value;
         const dayVal = parseInt(document.getElementById('day-range').value);
         document.getElementById('day-range-label').textContent = `0 – ${dayVal}`;
-
         renderScatterPlot(feature);
         renderLocationChart();
         renderTrendChart();
-        // Feature importance is static
     }
 
     // ----- INIT -----
@@ -580,22 +495,16 @@
     renderLocationChart();
     renderTrendChart();
 
-    // Event listeners
     document.getElementById('feature-select').addEventListener('change', updateDashboard);
     document.getElementById('location-filter').addEventListener('change', updateDashboard);
     document.getElementById('day-range').addEventListener('input', updateDashboard);
 
-    // Handle resize
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(updateDashboard, 200);
+        resizeTimer = setTimeout(updateDashboard, 300);
     });
-
-    // Update metrics (static from model)
-    // Already set in HTML
-
-    console.log('Dashboard ready!');
+})();
 </script>
 </body>
 </html>
