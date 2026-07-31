@@ -44,6 +44,15 @@ Three models were evaluated using a time-based train-test split:
 - **Linear Regression:** R² = 0.832
 - **Random Forest:** R² = 0.788
 - **Gradient Boosting:** **R² = 0.842** (Best Performing)
+  
+## 🤖 Model Performance Comparison
+
+| Model | R² | RMSE | MAE |
+|-------|----|------|-----|
+| **Gradient Boosting** | **0.842** | **0.0128** | **0.0082** |
+| Linear Regression | 0.832 | 0.0132 | 0.0083 |
+| Random Forest | 0.788 | 0.0148 | 0.0085 |
+| Mean Baseline | -0.077 | 0.0334 | 0.0246 |
 
 ### 3. Feature Importance
 The Gradient Boosting model identified **maximum dissolved oxygen** as the most influential feature by a significant margin.
@@ -62,13 +71,3 @@ These findings suggest that **dissolved oxygen** and **conductance measurements*
 
 **Adiva Parisa and Monisha Majumder**
 
-[![GitHub](https://img.shields.io/badge/GitHub-adivaparisa-black)](https://github.com/adivaparisa)
-[![GitHub](https://img.shields.io/badge/GitHub-adivaparisa-black)](https://github.com/monimaj256)
-
----
-
-## 📖 References
-
-- [Water Quality Data Sources](https://www.waterqualitydata.us/)
-- [Scikit-learn Documentation](https://scikit-learn.org/)
-- [D3.js Visualization Library](https://d3js.org/)
