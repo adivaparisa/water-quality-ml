@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Water Quality pH Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -293,6 +292,7 @@
         { location: 32, pH: 0.732 }
     ];
 
+    // Generate synthetic trend data
     const trendData = [];
     for (let day = 0; day <= 422; day++) {
         let base = 0.664;
@@ -302,6 +302,7 @@
         trendData.push({ day, pH: Math.min(0.72, Math.max(0.60, base + seasonal + noise + drift)) });
     }
 
+    // Generate synthetic scatter data
     const scatterData = [];
     for (let i = 0; i < 800; i++) {
         let oxygen = 0.75 + Math.random() * 0.25;
@@ -310,10 +311,14 @@
     }
 
     // ----- HELPERS -----
-    function getWidth(selector) {
+    function getContainerSize(selector) {
         const el = document.querySelector(selector);
-        if (!el) return 500;
-        return Math.max(300, el.clientWidth || 500);
+        if (!el) return { width: 500, height: 300 };
+        const rect = el.getBoundingClientRect();
+        return {
+            width: Math.max(300, rect.width || 500),
+            height: Math.max(200, rect.height || 300)
+        };
     }
 
     // ----- RENDER FUNCTIONS -----
@@ -336,8 +341,7 @@
 
     function renderLocationChart() {
         const container = document.getElementById('location-plot');
-        const width = getWidth('#location-plot');
-        const height = 280;
+        const { width, height } = getContainerSize('#location-plot');
         const margin = { top: 20, right: 20, bottom: 40, left: 50 };
         const innerWidth = Math.max(200, width - margin.left - margin.right);
         const innerHeight = height - margin.top - margin.bottom;
@@ -382,8 +386,7 @@
 
     function renderTrendChart() {
         const container = document.getElementById('trend-plot');
-        const width = getWidth('#trend-plot');
-        const height = 280;
+        const { width, height } = getContainerSize('#trend-plot');
         const margin = { top: 20, right: 20, bottom: 40, left: 50 };
         const innerWidth = Math.max(200, width - margin.left - margin.right);
         const innerHeight = height - margin.top - margin.bottom;
@@ -417,8 +420,7 @@
 
     function renderScatterPlot(highlightFeature) {
         const container = document.getElementById('scatter-plot');
-        const width = getWidth('#scatter-plot');
-        const height = 280;
+        const { width, height } = getContainerSize('#scatter-plot');
         const margin = { top: 20, right: 20, bottom: 45, left: 50 };
         const innerWidth = Math.max(200, width - margin.left - margin.right);
         const innerHeight = height - margin.top - margin.bottom;
@@ -449,7 +451,7 @@
             .attr('fill', (d, i) => colorScale(i / 600))
             .attr('opacity', 0.6);
 
-        // Simple regression line
+        // Regression line
         const xVals = scatterData.map(d => d[xKey] || d.oxygen_max);
         const yVals = scatterData.map(d => d.pH);
         const n = xVals.length;
@@ -491,10 +493,14 @@
 
     // ----- INIT -----
     renderFeatureImportance();
-    renderScatterPlot('oxygen_max');
-    renderLocationChart();
-    renderTrendChart();
+    // Delay to ensure layout is complete
+    setTimeout(() => {
+        renderScatterPlot('oxygen_max');
+        renderLocationChart();
+        renderTrendChart();
+    }, 100);
 
+    // Event listeners
     document.getElementById('feature-select').addEventListener('change', updateDashboard);
     document.getElementById('location-filter').addEventListener('change', updateDashboard);
     document.getElementById('day-range').addEventListener('input', updateDashboard);
